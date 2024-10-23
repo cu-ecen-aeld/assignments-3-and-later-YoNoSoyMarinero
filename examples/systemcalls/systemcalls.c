@@ -1,5 +1,9 @@
 #include "systemcalls.h"
-
+#include <stdbool.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -9,15 +13,15 @@
 */
 bool do_system(const char *cmd)
 {
+	int status;
 
-/*
- * TODO  add your code here
- *  Call the system() function with the command set in the cmd
- *   and return a boolean true if the system() call completed with success
- *   or false() if it returned a failure
-*/
+	status = system(cmd);
 
-    return true;
+	if (status == -1) {
+		return false;
+	}
+   
+	return true;
 }
 
 /**
@@ -36,32 +40,35 @@ bool do_system(const char *cmd)
 
 bool do_exec(int count, ...)
 {
-    va_list args;
-    va_start(args, count);
-    char * command[count+1];
-    int i;
-    for(i=0; i<count; i++)
-    {
-        command[i] = va_arg(args, char *);
-    }
-    command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
+	va_list args;
+	va_start(args, count);
+	char * command[count+1];
+	int i;
+	for(i=0; i<count; i++)
+	{
+		command[i] = va_arg(args, char *);
+	}
+	command[count] = NULL;
+	// this line is to avoid a compile warning before your implementation is complete
+	// and may be removed
+	command[count] = command[count];
 
-/*
- * TODO:
- *   Execute a system command by calling fork, execv(),
- *   and wait instead of system (see LSP page 161).
- *   Use the command[0] as the full path to the command to execute
- *   (first argument to execv), and use the remaining arguments
- *   as second argument to the execv() command.
- *
-*/
+	/*
+	*   Execute a system command by calling fork, execv(),
+	*   and wait instead of system (see LSP page 161).
+	*   Use the command[0] as the full path to the command to execute
+	*   (first argument to execv), and use the remaining arguments
+	*   as second argument to the execv() command.
+	*
+	*/
 
-    va_end(args);
+	va_end(args);
 
-    return true;
+	if (execv(command[0], &command[1]) == -1) {
+		return false;
+	}
+
+	return true;
 }
 
 /**
@@ -71,29 +78,45 @@ bool do_exec(int count, ...)
 */
 bool do_exec_redirect(const char *outputfile, int count, ...)
 {
-    va_list args;
-    va_start(args, count);
-    char * command[count+1];
-    int i;
-    for(i=0; i<count; i++)
-    {
-        command[i] = va_arg(args, char *);
-    }
-    command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
+	va_list args;
+	va_start(args, count);
+	char * command[count+1];
+	int i;
+	for(i=0; i<count; i++)
+	{
+		command[i] = va_arg(args, char *);
+	}
+		command[count] = NULL;
+	// this line is to avoid a compile warning before your implementation is complete
+	// and may be removed
+	command[count] = command[count];
 
 
-/*
- * TODO
- *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
- *   redirect standard out to a file specified by outputfile.
- *   The rest of the behaviour is same as do_exec()
- *
-*/
+	/*
+	* TODO
+	*   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
+	*   redirect standard out to a file specified by outputfile.
+	*   The rest of the behaviour is same as do_exec()
+	*
+	*/
 
-    va_end(args);
+	va_end(args);
+	
+	int cpid;
+	int fd = open("redirected.txt", O_WRONLY | O_TRUNC | O_CREAT, 0644);
+	if (fd < 0) { perror("open"); abort(); }
 
-    return true;
+	switch (cpid = fork()) {
+	case -1: perror("fork"); abort();
+	case 0: 
+		 if (dup2(fd, 1) < 0) { perror("dup2"); abort(); }
+		 close(fd);
+
+		 if (execv(command[0], &command[1]) == -1) {
+			perror("execvp");
+			return false;
+		 }
+	}
+
+	return true;
 }
