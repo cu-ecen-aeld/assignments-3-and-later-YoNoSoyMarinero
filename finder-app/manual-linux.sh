@@ -7,10 +7,9 @@ set -u
 
 OUTDIR=/tmp/aeld
 KERNEL_REPO=git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
-TOOL_CHAIN_SYSROOT_PATH=/home/milosmarinkovic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc/
 KERNEL_VERSION=v5.15.163
 BUSYBOX_VERSION=1_33_1
-FINDER_APP_DIR=/home/milosmarinkovic/embedded-linux-course/assignment-1-YoNoSoyMarinero/finder-app
+FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
 CROSS_COMPILE=aarch64-none-linux-gnu-
 
@@ -69,12 +68,13 @@ then
 git clone git://busybox.net/busybox.git
     cd busybox
     git checkout ${BUSYBOX_VERSION}
+    make distclean
+    make defconfig
 else
     cd busybox
 fi
 
-make distclean
-make defconfig
+
 make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
 make CONFIG_PREFIX=${OUTDIR}/rootfs ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} install
 
@@ -85,15 +85,16 @@ echo "Library dependencies"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
-
-cp "${TOOL_CHAIN_SYSROOT_PATH}/lib/ld-linux-aarch64.so.1" \
-	"${TOOL_CHAIN_SYSROOT_PATH}/lib64/libm.so.6" \
-	"${TOOL_CHAIN_SYSROOT_PATH}/lib64/libresolv.so.2" \
-	"${TOOL_CHAIN_SYSROOT_PATH}/lib64/libc.so.6" \
-	"${OUTDIR}/rootfs/lib64"
+FILE_PATH=$(which ${CROSS_COMPILE}gcc)
+compiler_path=$(dirname "$FILE_PATH")/../aarch64-none-linux-gnu/libc
+echo compiler_path= ${compiler_path}
+sudo cp ${compiler_path}/lib/ld-linux-aarch64.so.1 lib
+sudo cp ${compiler_path}/lib64/libc.so.6 lib64
+sudo cp ${compiler_path}/lib64/libm.so.6 lib64
+sudo cp ${compiler_path}/lib64/libresolv.so.2 lib64
 
 sudo mknod -m 666 dev/null c 1 3
-sudo mknod -m 666 dev/console c 5 1
+sudo mknod -m 600 dev/console c 5 1
 
 cd "${FINDER_APP_DIR}"
 
@@ -109,8 +110,9 @@ cp "${FINDER_APP_DIR}/writer" \
 cp -r "${FINDER_APP_DIR}/conf" "${OUTDIR}/rootfs/home"
 
 
+sudo chown root ${OUTDIR}/
+
+
 cd "${OUTDIR}/rootfs"
-
 find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
-
 gzip -f "${OUTDIR}/initramfs.cpio"
