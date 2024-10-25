@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 
 filesdir=$1
@@ -15,8 +15,8 @@ if [ ! -d "$filesdir" ]; then
 	exit 1
 fi
 
-matching_files=$(grep -l --exclude-dir=* "$searchstr" "$filesdir"/* | wc -l)
-total_matching_lines=$(grep -o --exclude-dir=* "$searchstr" "$filesdir"/* | wc -l)
+matching_files=$(grep -l "$searchstr" "$filesdir"/* | wc -l)
+total_matching_lines=$(grep -o "$searchstr" "$filesdir"/* | wc -l)
 
 echo "The number of files are $matching_files and the number of matching lines are $total_matching_lines"
 
